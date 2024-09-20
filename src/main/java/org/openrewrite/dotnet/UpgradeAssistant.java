@@ -45,7 +45,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
     private static final String PREVIOUS_RECIPE = UpgradeAssistant.class.getName() + ".PREVIOUS_RECIPE";
     private static final String INIT_REPO_DIR = UpgradeAssistant.class.getName() + ".INIT_REPO_DIR";
     private static final String UPGRADE_ASSISTANT = "upgrade-assistant";
-    private static final List<String> FILE_TYPES = Arrays.asList("project", "file.cs");
+    private static final String DOTNET_HOME = System.getProperty("user.home") + File.separator + ".dotnet";
 
     @Option(
             displayName = "Target framework version",
@@ -117,6 +117,8 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
     }
 
     private void runUpgradeAssistant(Accumulator acc, ExecutionContext ctx) {
+        Map<String, String> env = buildUpgradeAssistantEnv();
+
         for (Path projectFile : acc.getProjectFiles()) {
             List<String> command = buildUpgradeAssistantCommand(projectFile);
             Path out = null;
@@ -126,8 +128,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                 ProcessBuilder builder = new ProcessBuilder();
                 builder.command(command);
                 builder.directory(acc.getDirectory().toFile());
-                builder.environment().put("TERM", "dumb");  // FIXME is this node specific?
-                //env.forEach(builder.environment()::put);
+                env.forEach(builder.environment()::put);
 
                 out = Files.createTempFile(
                         WorkingDirectoryExecutionContextView.view(ctx).getWorkingDirectory(),
@@ -168,6 +169,15 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         }
     }
 
+    private Map<String, String> buildUpgradeAssistantEnv() {
+        Map<String, String> env = new HashMap<>();
+        env.put("TERM", "dumb"); // FIXME is this node specific?
+        String path = System.getenv("PATH");
+        // This is required to find .NET SDKs
+        env.put("PATH", path + File.pathSeparator + DOTNET_HOME);
+        return env;
+    }
+
     private void deleteFile(@Nullable Path path) {
         if (path != null) {
             try {
@@ -200,10 +210,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         }
 
         // Look for upgrade-assistant in conventional installation locations
-        Path cmdPath = Paths.get(System.getProperty("user.home"))
-                .resolve(".dotnet")
-                .resolve("tools")
-                .resolve(cmdName);
+        Path cmdPath = Paths.get(DOTNET_HOME).resolve("tools").resolve(cmdName);
         if (Files.exists(cmdPath)) {
             return cmdPath;
         }
@@ -215,7 +222,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             }
         }
 
-        return Paths.get(cmdName);
+        throw new IllegalStateException("Unable to find " + cmdName + " on PATH");
     }
 
     private void processOutput(Path projectDir, Path output, Accumulator acc) {
@@ -296,6 +303,17 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                 snippets);
     }
 
+    private static Path createDirectory(ExecutionContext ctx) {
+        WorkingDirectoryExecutionContextView view = WorkingDirectoryExecutionContextView.view(ctx);
+        return Optional.of(view.getWorkingDirectory()).map(d -> d.resolve("repo")).map(d -> {
+            try {
+                return Files.createDirectory(d).toRealPath();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }).orElseThrow(() -> new IllegalStateException("Failed to create working directory for repo"));
+    }
+
     @ToString
     @EqualsAndHashCode
     @RequiredArgsConstructor
@@ -309,7 +327,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         @Getter
         private final List<Path> projectFiles = new ArrayList<>();
 
-        public void copyFromPrevious(Path previous) {
+        private void copyFromPrevious(Path previous) {
             try {
                 Files.walkFileTree(previous, new SimpleFileVisitor<Path>() {
                     @Override
@@ -340,7 +358,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             }
         }
 
-        public void writeSource(SourceFile sourceFile) {
+        private void writeSource(SourceFile sourceFile) {
             try {
                 Path path = resolvedPath(sourceFile);
                 Files.createDirectories(path.getParent());
@@ -364,15 +382,15 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             return pathString.endsWith(".csproj") || pathString.endsWith(".vbproj");
         }
 
-        public void modified(Path path) {
+        private void modified(Path path) {
             modified.add(path);
         }
 
-        public boolean wasModified(SourceFile tree) {
+        private boolean wasModified(SourceFile tree) {
             return modified.contains(resolvedPath(tree));
         }
 
-        public String content(SourceFile tree) {
+        private String content(SourceFile tree) {
             try {
                 Path path = resolvedPath(tree);
                 return tree.getCharset() != null ? new String(Files.readAllBytes(path), tree.getCharset()) : new String(
@@ -382,28 +400,16 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             }
         }
 
-        public Path resolvedPath(SourceFile tree) {
+        private Path resolvedPath(SourceFile tree) {
             return directory.resolve(tree.getSourcePath());
         }
 
-        public void addFileErrors(Path path, List<String> errors) {
+        private void addFileErrors(Path path, List<String> errors) {
             fileErrors.put(path, new ArrayList<>(errors));
         }
 
-        @Nullable public List<String> getFileErrors(Path path) {
+        @Nullable private List<String> getFileErrors(Path path) {
             return fileErrors.get(path);
         }
     }
-
-    private static Path createDirectory(ExecutionContext ctx) {
-        WorkingDirectoryExecutionContextView view = WorkingDirectoryExecutionContextView.view(ctx);
-        return Optional.of(view.getWorkingDirectory()).map(d -> d.resolve("repo")).map(d -> {
-            try {
-                return Files.createDirectory(d).toRealPath();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }).orElseThrow(() -> new IllegalStateException("Failed to create working directory for repo"));
-    }
-
 }
