@@ -307,9 +307,11 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
     public static class Accumulator {
         @Getter
         private final Path directory;
+
         private final Map<Path, String> fileErrors = new HashMap<>();
         final Map<Path, Long> beforeModificationTimestamps = new HashMap<>();
         final Set<Path> modified = new LinkedHashSet<>();
+
         @Getter
         private final List<Path> projectFiles = new ArrayList<>();
 
