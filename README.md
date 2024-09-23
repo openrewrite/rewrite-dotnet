@@ -10,7 +10,7 @@
 
 This project implements a [Rewrite module](https://github.com/openrewrite/rewrite) that migrates projects using .NET tools.
 
-Browse [a selection of recipes available through this module in the recipe catalog](https://docs.openrewrite.org/recipes/csharp/dotnet).
+Browse [a selection of recipes available through this module in the recipe catalog](https://docs.openrewrite.org/recipes/dotnet).
 
 ## Contributing
 
