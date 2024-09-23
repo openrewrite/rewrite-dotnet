@@ -23,7 +23,7 @@ import org.openrewrite.test.RewriteTest;
 import static org.openrewrite.test.SourceSpecs.text;
 
 @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
-public class UpgradeAssistantTest implements RewriteTest {
+class UpgradeAssistantTest implements RewriteTest {
 
     @ParameterizedTest
     @CsvSource(textBlock = """
