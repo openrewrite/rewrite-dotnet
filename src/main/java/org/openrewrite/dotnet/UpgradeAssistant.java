@@ -18,9 +18,6 @@ package org.openrewrite.dotnet;
 import lombok.*;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.*;
-import org.openrewrite.marker.Marker;
-import org.openrewrite.marker.Markers;
-import org.openrewrite.marker.SearchResult;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.scheduling.WorkingDirectoryExecutionContextView;
 import org.openrewrite.text.PlainText;
@@ -36,7 +33,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -80,18 +77,10 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         return new TreeVisitor<Tree, ExecutionContext>() {
             @Override
             public @Nullable Tree visit(@Nullable Tree tree, ExecutionContext ctx) {
-                if (tree instanceof SourceFile &&
-                        !(tree instanceof Quark) &&
-                        !(tree instanceof ParseError) &&
-                        !tree.getClass().getName().equals("org.openrewrite.java.tree.J$CompilationUnit")) {
+                if (tree instanceof SourceFile && !(tree instanceof Quark) && !(tree instanceof ParseError)) {
                     SourceFile sourceFile = (SourceFile) tree;
-                    String fileName = sourceFile.getSourcePath().getFileName().toString();
-                    if (fileName.indexOf('.') > 0) {
-                        String extension = fileName.substring(fileName.lastIndexOf('.') + 1);
-                        acc.extensionCounts.computeIfAbsent(extension, e -> new AtomicInteger(0)).incrementAndGet();
-                    }
 
-                    // only extract initial source files for first upgrade-assistant recipe
+                    // Only extract initial source files for first upgrade-assistant recipe
                     if (Objects.equals(ctx.getMessage(FIRST_RECIPE), ctx.getCycleDetails().getRecipePosition())) {
                         acc.writeSource(sourceFile);
                     }
@@ -109,7 +98,9 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             acc.copyFromPrevious(previous);
         }
 
-        runUpgradeAssistant(acc, ctx);
+        if (ctx.getCycle() == 1) {
+            runUpgradeAssistant(acc, ctx);
+        }
         ctx.putMessage(PREVIOUS_RECIPE, acc.getDirectory());
 
         // FIXME check for generated files
@@ -120,6 +111,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         Map<String, String> env = buildUpgradeAssistantEnv();
 
         for (Path projectFile : acc.getProjectFiles()) {
+
             List<String> command = buildUpgradeAssistantCommand(projectFile);
             Path out = null;
             Path err = null;
@@ -156,7 +148,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                             acc.modified(path);
                         }
                     }
-                    processOutput(projectFile.getParent(), out, acc);
+                    processOutput(projectFile, out, acc);
                 }
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -171,7 +163,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
 
     private Map<String, String> buildUpgradeAssistantEnv() {
         Map<String, String> env = new HashMap<>();
-        env.put("TERM", "dumb"); // FIXME is this node specific?
+        env.put("TERM", "dumb");
         String path = System.getenv("PATH");
         // This is required to find .NET SDKs
         env.put("PATH", path + File.pathSeparator + DOTNET_HOME);
@@ -225,12 +217,18 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         throw new IllegalStateException("Unable to find " + cmdName + " on PATH");
     }
 
-    private void processOutput(Path projectDir, Path output, Accumulator acc) {
+    private void processOutput(Path projectFile, Path output, Accumulator acc) {
+        Path projectDir = projectFile.getParent();
+
         try (BufferedReader reader = Files.newBufferedReader(output)) {
             String fileName = null;
             List<String> transformerLogs = new ArrayList<>();
 
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                if (line.startsWith("Unknown target framework")) {
+                    acc.addFileError(projectFile, line);
+                    break;
+                }
                 String[] parts = line.split("\\s+");
                 if (parts.length == 0) {
                     continue;
@@ -241,12 +239,13 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                 } else if (fileName != null) {
                     if ("Succeeded".equals(token) || "Skipped".equals(token) || "Failed".equals(token)) {
                         if ("Failed".equals(token)) {
-                            acc.addFileErrors(projectDir.resolve(fileName), transformerLogs);
+                            String error = transformerLogs.stream().map(String::trim).collect(Collectors.joining("\n"));
+                            acc.addFileError(projectDir.resolve(fileName), error);
                         }
                         fileName = null;
                         transformerLogs.clear();
                     } else {
-                        transformerLogs.add(line.replaceFirst("\\s+", ""));
+                        transformerLogs.add(line);
                     }
                 }
             }
@@ -270,25 +269,13 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
     }
 
     private SourceFile createAfter(SourceFile before, Accumulator acc) {
-        if (!acc.wasModified(before)) {
-            return before;
+        String error = acc.getFileError(acc.resolvedPath(before));
+        if (error != null) {
+            throw new RecipeException(error);
         }
 
-        String content;
-        String beforeContent = acc.content(before);
-        List<PlainText.Snippet> snippets = new ArrayList<>();
-
-        List<String> errors = acc.getFileErrors(acc.resolvedPath(before));
-        if (errors != null) {
-            content = "";
-            PlainText.Snippet snippet = new PlainText.Snippet(Tree.randomId(), Markers.EMPTY, "");
-            snippet = snippet.withText(beforeContent.substring(0, beforeContent.indexOf('\n')));
-            String errorText = String.join("\n", errors);
-            Marker marker = new SearchResult(Tree.randomId(), errorText);
-            snippet = snippet.withMarkers(snippet.getMarkers().add(marker));
-            snippets.add(snippet);
-        } else {
-            content = beforeContent;
+        if (!acc.wasModified(before)) {
+            return before;
         }
 
         return new PlainText(
@@ -299,8 +286,8 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                 before.isCharsetBomMarked(),
                 before.getFileAttributes(),
                 null,
-                content,
-                snippets);
+                acc.content(before),
+                Collections.emptyList());
     }
 
     private static Path createDirectory(ExecutionContext ctx) {
@@ -320,10 +307,9 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
     public static class Accumulator {
         @Getter
         private final Path directory;
-        private final Map<Path, List<String>> fileErrors = new HashMap<>();
+        private final Map<Path, String> fileErrors = new HashMap<>();
         final Map<Path, Long> beforeModificationTimestamps = new HashMap<>();
         final Set<Path> modified = new LinkedHashSet<>();
-        final Map<String, AtomicInteger> extensionCounts = new HashMap<>();
         @Getter
         private final List<Path> projectFiles = new ArrayList<>();
 
@@ -345,9 +331,6 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                             Path target = directory.resolve(previous.relativize(file));
                             Files.copy(file, target);
                             beforeModificationTimestamps.put(target, Files.getLastModifiedTime(target).toMillis());
-                            if (isProjectFile(target)) {
-                                projectFiles.add(target);
-                            }
                         } catch (NoSuchFileException ignore) {
                         }
                         return FileVisitResult.CONTINUE;
@@ -393,8 +376,9 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
         private String content(SourceFile tree) {
             try {
                 Path path = resolvedPath(tree);
-                return tree.getCharset() != null ? new String(Files.readAllBytes(path), tree.getCharset()) : new String(
-                        Files.readAllBytes(path));
+                return tree.getCharset() != null ?
+                        new String(Files.readAllBytes(path), tree.getCharset()) :
+                        new String(Files.readAllBytes(path));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -404,11 +388,11 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             return directory.resolve(tree.getSourcePath());
         }
 
-        private void addFileErrors(Path path, List<String> errors) {
-            fileErrors.put(path, new ArrayList<>(errors));
+        private void addFileError(Path path, String error) {
+            fileErrors.put(path, error);
         }
 
-        @Nullable private List<String> getFileErrors(Path path) {
+        @Nullable private String getFileError(Path path) {
             return fileErrors.get(path);
         }
     }

@@ -15,7 +15,6 @@
  */
 package org.openrewrite.dotnet;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -30,7 +29,7 @@ public class UpgradeAssistantTest implements RewriteTest {
     @CsvSource(textBlock = """
             net6.0, net7.0
             net6.0, net9.0
-            net7.0, net8.0
+            net8.0, net9.0
             """)
     void upgradeDotNetSingleProject(String currentVersion, String upgradedVersion) {
         rewriteRun(
