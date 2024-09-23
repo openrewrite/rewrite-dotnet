@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Value
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = false)
 public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulator> {
     private static final String FIRST_RECIPE = UpgradeAssistant.class.getName() + ".FIRST_RECIPE";
     private static final String PREVIOUS_RECIPE = UpgradeAssistant.class.getName() + ".PREVIOUS_RECIPE";
@@ -97,8 +97,8 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
                 !Objects.equals(ctx.getMessage(FIRST_RECIPE), ctx.getCycleDetails().getRecipePosition())) {
             acc.copyFromPrevious(previous);
         }
-
         if (ctx.getCycle() == 1) {
+            // upgrade-assistant run more than once on a project will log an "Unknown target framework" message
             runUpgradeAssistant(acc, ctx);
         }
         ctx.putMessage(PREVIOUS_RECIPE, acc.getDirectory());
@@ -392,7 +392,7 @@ public class UpgradeAssistant extends ScanningRecipe<UpgradeAssistant.Accumulato
             fileErrors.put(path, error);
         }
 
-        @Nullable private String getFileError(Path path) {
+        private @Nullable String getFileError(Path path) {
             return fileErrors.get(path);
         }
     }
