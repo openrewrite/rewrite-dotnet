@@ -87,7 +87,6 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
 
         ctx.putMessage(PREVIOUS_RECIPE, acc.getDirectory());
 
-        // FIXME check for generated files
         return Collections.emptyList();
     }
 

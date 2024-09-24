@@ -23,11 +23,9 @@ import org.openrewrite.ExecutionContext;
 import org.openrewrite.Option;
 import org.openrewrite.RecipeException;
 import org.openrewrite.SourceFile;
-import org.openrewrite.text.PlainText;
 
 import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -122,63 +120,57 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
     @Override
     protected SourceFile createAfter(SourceFile before, Accumulator acc, ExecutionContext ctx) {
         List<JsonNode> results = acc.getFileResults(acc.resolvedPath(before));
-        if (results == null) {
-            return super.createAfter(before, acc, ctx);
+        if (results != null) {
+            for (JsonNode ruleInstanceNode : results) {
+                analysisTable.insertRow(ctx, buildUpgradeAssistantAnalysisRow(ruleInstanceNode, acc));
+            }
         }
 
-        for (JsonNode ruleInstanceNode : results) {
-            JsonNode locationNode = ruleInstanceNode.get("location");
-            URL link = null;
-            if (locationNode.has("links")) {
-                try {
-                    JsonNode linkNode = locationNode.get("links").get(0);
-                    link = new URL(linkNode.get("url").asText());
-                } catch (IOException e) {
-                    // Ignored
-                }
+        return super.createAfter(before, acc, ctx);
+    }
+
+    private UpgradeAssistantAnalysis.Row buildUpgradeAssistantAnalysisRow(JsonNode ruleInstanceNode, Accumulator acc) {
+        JsonNode locationNode = ruleInstanceNode.get("location");
+        URL link = null;
+        if (locationNode.has("links")) {
+            try {
+                JsonNode linkNode = locationNode.get("links").get(0);
+                link = new URL(linkNode.get("url").asText());
+            } catch (IOException ignored) {
+                // Ignored
             }
-            String projectPath = ruleInstanceNode.get("projectPath").asText();
-            String sourcePath = locationNode.get("path").asText();
-            String ruleId = ruleInstanceNode.get("ruleId").asText();
-            String ruleLabel = acc.getRuleLabel(ruleId);
-            String snippet = locationNode.get("snippet").asText();
-            String codeSnippet;
-            String recommendation;
-            Matcher matcher = RECOMMENDATION_SNIPPET_PATTERN.matcher(snippet);
+        }
+
+        String projectPath = ruleInstanceNode.get("projectPath").asText();
+        String sourcePath = locationNode.get("path").asText();
+        String ruleId = ruleInstanceNode.get("ruleId").asText();
+        String ruleLabel = acc.getRuleLabel(ruleId);
+
+        String snippet = locationNode.get("snippet").asText();
+        String codeSnippet;
+        String recommendation;
+        Matcher matcher = RECOMMENDATION_SNIPPET_PATTERN.matcher(snippet);
+        if (matcher.find()) {
+            codeSnippet = matcher.group(1);
+            recommendation = matcher.group(2);
+        } else {
+            matcher = CURRENT_NEW_SNIPPET_PATTERN.matcher(snippet);
             if (matcher.find()) {
                 codeSnippet = matcher.group(1);
                 recommendation = matcher.group(2);
             } else {
-                matcher = CURRENT_NEW_SNIPPET_PATTERN.matcher(snippet);
-                if (matcher.find()) {
-                    codeSnippet = matcher.group(1);
-                    recommendation = matcher.group(2);
-                } else {
-                    codeSnippet = snippet;
-                    recommendation = null;
-                }
+                codeSnippet = snippet;
+                recommendation = null;
             }
-
-            analysisTable.insertRow(
-                    ctx,
-                    new UpgradeAssistantAnalysis.Row(projectPath,
-                            sourcePath,
-                            ruleId,
-                            ruleLabel,
-                            codeSnippet,
-                            recommendation,
-                            link));
         }
 
-        return new PlainText(
-                before.getId(),
-                before.getSourcePath(),
-                before.getMarkers(),
-                Optional.ofNullable(before.getCharset()).map(Charset::name).orElse(null),
-                before.isCharsetBomMarked(),
-                before.getFileAttributes(),
-                null,
-                acc.content(before),
-                Collections.emptyList());
+        return new UpgradeAssistantAnalysis.Row(
+                projectPath,
+                sourcePath,
+                ruleId,
+                ruleLabel,
+                codeSnippet,
+                recommendation,
+                link);
     }
 }

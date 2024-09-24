@@ -22,6 +22,7 @@ import org.openrewrite.Option;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -103,7 +104,7 @@ public class UpgradeAssistant extends UpgradeAssistantRecipe {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UncheckedIOException(e);
         }
     }
 }
