@@ -249,6 +249,7 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
 
         @Getter
         private final Map<Path, Long> beforeModificationTimestamps = new HashMap<>();
+
         private final Set<Path> modified = new LinkedHashSet<>();
 
         @Getter
