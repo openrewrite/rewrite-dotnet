@@ -254,8 +254,10 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
 
         @Getter
         private final List<Path> projectFiles = new ArrayList<>();
+
         @Getter
         private final List<Path> solutionFiles = new ArrayList<>();
+
         private final Map<String, JsonNode> rules = new HashMap<>();
 
         private void copyFromPrevious(Path previous) {
