@@ -18,6 +18,7 @@ package org.openrewrite.dotnet;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openrewrite.DocumentExample;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.test.SourceSpecs.text;
@@ -25,78 +26,79 @@ import static org.openrewrite.test.SourceSpecs.text;
 @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
 class UpgradeAssistantTest implements RewriteTest {
 
+    @DocumentExample
     @ParameterizedTest
     @CsvSource(textBlock = """
-            net6.0, net7.0
-            net6.0, net9.0
-            net8.0, net9.0
-            """)
+      net6.0, net7.0
+      net6.0, net9.0
+      net8.0, net9.0
+      """)
     void upgradeDotNetSingleProject(String currentVersion, String upgradedVersion) {
         rewriteRun(
-                spec -> spec.recipe(new UpgradeAssistant(upgradedVersion)),
-                text(
-                    """
-                    <Project Sdk="Microsoft.NET.Sdk">
-                      <PropertyGroup>
-                        <TargetFrameworks>%s</TargetFrameworks>
-                      </PropertyGroup>
-                    </Project>
-                    """.formatted(currentVersion),
-                    """
-                    <Project Sdk="Microsoft.NET.Sdk">
-                      <PropertyGroup>
-                        <TargetFrameworks>%s</TargetFrameworks>
-                      </PropertyGroup>
-                    </Project>
-                    """.formatted(upgradedVersion),
-                    spec -> spec.path("src/Proj.csproj")
-                )
+          spec -> spec.recipe(new UpgradeAssistant(upgradedVersion)),
+          text(
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(currentVersion),
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(upgradedVersion),
+            spec -> spec.path("src/Proj.csproj")
+          )
         );
     }
 
     @ParameterizedTest
     @CsvSource(textBlock = """
-            net6.0, net7.0
-            net6.0, net9.0
-            net7.0, net8.0
-            """)
+      net6.0, net7.0
+      net6.0, net9.0
+      net7.0, net8.0
+      """)
     void upgradeDotNetMultipleProject(String currentVersion, String upgradedVersion) {
         rewriteRun(
-                spec -> spec.recipe(new UpgradeAssistant(upgradedVersion)),
-                text(
-                        """
-                        <Project Sdk="Microsoft.NET.Sdk">
-                          <PropertyGroup>
-                            <TargetFrameworks>%s</TargetFrameworks>
-                          </PropertyGroup>
-                        </Project>
-                        """.formatted(currentVersion),
-                        """
-                        <Project Sdk="Microsoft.NET.Sdk">
-                          <PropertyGroup>
-                            <TargetFrameworks>%s</TargetFrameworks>
-                          </PropertyGroup>
-                        </Project>
-                        """.formatted(upgradedVersion),
-                        spec -> spec.path("src/Proj.csproj")
-                ),
-                text(
-                        """
-                        <Project Sdk="Microsoft.NET.Sdk">
-                          <PropertyGroup>
-                            <TargetFrameworks>%s</TargetFrameworks>
-                          </PropertyGroup>
-                        </Project>
-                        """.formatted(currentVersion),
-                        """
-                        <Project Sdk="Microsoft.NET.Sdk">
-                          <PropertyGroup>
-                            <TargetFrameworks>%s</TargetFrameworks>
-                          </PropertyGroup>
-                        </Project>
-                        """.formatted(upgradedVersion),
-                        spec -> spec.path("src/ProjTest.csproj")
-                )
+          spec -> spec.recipe(new UpgradeAssistant(upgradedVersion)),
+          text(
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(currentVersion),
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(upgradedVersion),
+            spec -> spec.path("src/Proj.csproj")
+          ),
+          text(
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(currentVersion),
+            """
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <TargetFrameworks>%s</TargetFrameworks>
+                </PropertyGroup>
+              </Project>
+              """.formatted(upgradedVersion),
+            spec -> spec.path("src/ProjTest.csproj")
+          )
         );
     }
 }
