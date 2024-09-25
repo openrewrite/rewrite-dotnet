@@ -27,7 +27,7 @@ class UpgradeAssistantAnalyzeTest implements RewriteTest {
     @Test
     void analyzeSingleProject() {
         rewriteRun(
-                spec -> spec.recipe(new UpgradeAssistantAnalyze("net9.0")),
+                spec -> spec.recipe(new UpgradeAssistantAnalyze("net9.0", null)),
                 text(
                         """
                         <Project Sdk="Microsoft.NET.Sdk">

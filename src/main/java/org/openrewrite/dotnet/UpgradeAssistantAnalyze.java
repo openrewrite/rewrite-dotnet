@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
+import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Option;
 import org.openrewrite.RecipeException;
@@ -48,6 +49,14 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
             example = "net9.0")
     String targetFramework;
 
+    @Option(
+            displayName = "Privacy mode",
+            description = "Specifies how much data is included in the generated data table.",
+            example = "Restricted",
+            valid = {"Unrestricted", "Protected", "Restricted"})
+    @Nullable
+    String privacyMode;
+
     @Override
     public String getDisplayName() {
         return "Analyze a .NET project using upgrade-assistant";
@@ -55,8 +64,10 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
 
     @Override
     public String getDescription() {
-        return "Run [upgrade-assistant](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) " +
-                "across a project to analyze changes required to upgrade it to a newer .NET framework version.";
+        return "Run [upgrade-assistant analyze](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) " +
+                "across a project to analyze changes required to upgrade it to a newer .NET framework version." +
+                "This recipe will generate a org.openrewrite.dotnet.UpgradeAssistantAnalysis data table containing " +
+                "the report details.";
     }
 
     @Override
@@ -67,6 +78,9 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
         command.add(solutionFile.toString());
         command.add("--source");
         command.add("Solution");
+        command.add("--code");
+        command.add("--privacyMode");
+        command.add(Optional.ofNullable(privacyMode).orElse("Protected"));
         command.add("--non-interactive");
         command.add("--targetFramework");
         command.add(targetFramework);

@@ -15,11 +15,14 @@
  */
 package org.openrewrite.dotnet;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openrewrite.RecipeException;
 import org.openrewrite.test.RewriteTest;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.openrewrite.test.SourceSpecs.text;
 
 @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
@@ -98,5 +101,26 @@ class UpgradeAssistantTest implements RewriteTest {
                         spec -> spec.path("src/ProjTest.csproj")
                 )
         );
+    }
+
+    @Test
+    void upgradeDotNetWithInvalidVersion() {
+        assertThatThrownBy(() ->
+                rewriteRun(
+                        spec -> spec.recipe(new UpgradeAssistant("foo-bar")),
+                        text(
+                                """
+                                        <Project Sdk="Microsoft.NET.Sdk">
+                                          <PropertyGroup>
+                                            <TargetFrameworks>net6.0</TargetFrameworks>
+                                          </PropertyGroup>
+                                        </Project>
+                                        """,
+                                spec -> spec.path("src/Proj.csproj")
+                        )
+                ))
+                .cause()
+                .isInstanceOf(RecipeException.class)
+                .hasMessageContaining("Unknown target framework");
     }
 }

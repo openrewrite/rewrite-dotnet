@@ -62,5 +62,4 @@ public class UpgradeAssistantAnalysis extends DataTable<UpgradeAssistantAnalysis
         @Nullable
         URL link;
     }
-
 }
