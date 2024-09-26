@@ -16,7 +16,7 @@
 
 ---
 type: specs.openrewrite.org/v1beta/category
-name: DotNet
+name: .Net
 packageName: org.openrewrite.dotnet
 description: Recipes to migrate projects using .NET tools.
 ---

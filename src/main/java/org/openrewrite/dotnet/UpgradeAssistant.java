@@ -45,7 +45,7 @@ public class UpgradeAssistant extends UpgradeAssistantRecipe {
     @Override
     public String getDescription() {
         return "Run [upgrade-assistant upgrade](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) " +
-                "across a project to upgrade it to a newer .NET framework version.";
+                "across a repository to upgrade projects to a newer version of .NET.";
     }
 
     @Override

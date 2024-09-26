@@ -16,24 +16,32 @@
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.dotnet.MigrateToNet6
+displayName: Upgrade to .NET 6.0 using upgrade-assistant
+description: Run [upgrade-assistant upgrade](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) across a repository to upgrade projects to .NET 6.0.
 recipeList:
   - org.openrewrite.dotnet.UpgradeAssistant:
       targetFramework: net6.0
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.dotnet.MigrateToNet7
+displayName: Upgrade to .NET 7.0 using upgrade-assistant
+description: Run [upgrade-assistant upgrade](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) across a repository to upgrade projects to .NET 7.0.
 recipeList:
   - org.openrewrite.dotnet.UpgradeAssistant:
       targetFramework: net7.0
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.dotnet.MigrateToNet8
+displayName: Upgrade to .NET 8.0 using upgrade-assistant
+description: Run [upgrade-assistant upgrade](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) across a repository to upgrade projects to .NET 8.0.
 recipeList:
   - org.openrewrite.dotnet.UpgradeAssistant:
       targetFramework: net8.0
 ---
 type: specs.openrewrite.org/v1beta/recipe
 name: org.openrewrite.dotnet.MigrateToNet9
+displayName: Upgrade to .NET 9.0 using upgrade-assistant
+description: Run [upgrade-assistant upgrade](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) across a repository to upgrade projects to .NET 9.0.
 recipeList:
   - org.openrewrite.dotnet.UpgradeAssistant:
       targetFramework: net9.0
