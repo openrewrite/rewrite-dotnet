@@ -132,11 +132,9 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
                 }
                 processOutput(inputFile, out, acc);
             }
-        } catch (
-                IOException e) {
+        } catch (IOException e) {
             throw new UncheckedIOException(e);
-        } catch (
-                InterruptedException e) {
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             deleteFile(out);
@@ -147,6 +145,7 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
     private Map<String, String> buildUpgradeAssistantEnv() {
         Map<String, String> env = new HashMap<>();
         env.put("TERM", "dumb");
+        env.put("DOTNET_UPGRADEASSISTANT_TELEMETRY_OPTOUT", "1");
         String path = System.getenv("PATH");
         // This is required to find .NET SDKs
         env.put("PATH", path + File.pathSeparator + DOTNET_HOME);
@@ -157,8 +156,8 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
         if (path != null) {
             try {
                 Files.deleteIfExists(path);
-            } catch (IOException e) {
-                // FIXME recipe logger?
+            } catch (IOException ignored) {
+                // Ignored
             }
         }
     }
