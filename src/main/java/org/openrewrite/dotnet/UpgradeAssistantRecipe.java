@@ -27,6 +27,7 @@ import org.openrewrite.scheduling.WorkingDirectoryExecutionContextView;
 import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParseError;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -95,7 +96,6 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
     protected void execUpgradeAssistant(Path inputFile, Accumulator acc, ExecutionContext ctx) {
         List<String> command = buildUpgradeAssistantCommand(acc, ctx, inputFile);
         Path out = null;
-        Path err = null;
 
         try {
             ProcessBuilder builder = new ProcessBuilder();
@@ -108,37 +108,39 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
                     WorkingDirectoryExecutionContextView.view(ctx).getWorkingDirectory(),
                     UPGRADE_ASSISTANT,
                     null);
-            err = Files.createTempFile(
-                    WorkingDirectoryExecutionContextView.view(ctx).getWorkingDirectory(),
-                    UPGRADE_ASSISTANT,
-                    null);
+
             builder.redirectOutput(ProcessBuilder.Redirect.to(out.toFile()));
-            builder.redirectError(ProcessBuilder.Redirect.to(err.toFile()));
+            builder.redirectError(ProcessBuilder.Redirect.to(out.toFile()));
 
             Process process = builder.start();
             process.waitFor(20, TimeUnit.MINUTES);
-            if (process.exitValue() != 0) {
-                String error = "Command failed: " + String.join(" ", command);
-                if (Files.exists(err)) {
-                    error += "\n" + new String(Files.readAllBytes(err));
-                }
-                throw new RuntimeException(error);
-            } else {
-                for (Map.Entry<Path, Long> entry : acc.beforeModificationTimestamps.entrySet()) {
-                    Path path = entry.getKey();
-                    if (!Files.exists(path) || Files.getLastModifiedTime(path).toMillis() > entry.getValue()) {
-                        acc.addModifiedFile(path);
+
+            // upgrade-assistent currently does not exit with non-zero on error nor does it
+            // log errors to stderr. Here we look for known fatal errors in stdout suggesting
+            // the command failed.
+            if (Files.exists(out)) {
+                try (BufferedReader reader = Files.newBufferedReader(out)) {
+                    for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                        if (line.startsWith("Project path does not exist")) {
+                            throw new RuntimeException("upgrade-assistant: " + line);
+                        }
                     }
                 }
-                processOutput(inputFile, out, acc);
             }
+
+            for (Map.Entry<Path, Long> entry : acc.beforeModificationTimestamps.entrySet()) {
+                Path path = entry.getKey();
+                if (!Files.exists(path) || Files.getLastModifiedTime(path).toMillis() > entry.getValue()) {
+                    acc.addModifiedFile(path);
+                }
+            }
+            processOutput(inputFile, out, acc);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             deleteFile(out);
-            deleteFile(err);
         }
     }
 
