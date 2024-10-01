@@ -148,6 +148,7 @@ abstract class UpgradeAssistantRecipe extends ScanningRecipe<UpgradeAssistantRec
         Map<String, String> env = new HashMap<>();
         env.put("TERM", "dumb");
         env.put("DOTNET_UPGRADEASSISTANT_TELEMETRY_OPTOUT", "1");
+        env.put("DOTNET_UPGRADEASSISTANT_SKIP_FIRST_TIME_EXPERIENCE", "1");
         String path = System.getenv("PATH");
         // This is required to find .NET SDKs
         env.put("PATH", path + File.pathSeparator + DOTNET_HOME);
