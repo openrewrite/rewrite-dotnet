@@ -22,11 +22,12 @@ import lombok.Value;
 import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Option;
-import org.openrewrite.RecipeException;
 import org.openrewrite.SourceFile;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -122,7 +123,13 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
                 }
             }
         } catch (IOException e) {
-            throw new RecipeException(e);
+            try {
+                throw new UncheckedIOException(
+                        e.getMessage() + "\nupgrade-assistant:\n" + new String(Files.readAllBytes(output)),
+                        e);
+            } catch (IOException ignored) {
+                throw new UncheckedIOException(e);
+            }
         }
     }
 

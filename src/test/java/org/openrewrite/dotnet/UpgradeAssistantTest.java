@@ -108,21 +108,31 @@ class UpgradeAssistantTest implements RewriteTest {
     @Test
     void upgradeDotNetWithInvalidVersion() {
         assertThatThrownBy(() ->
-                rewriteRun(
-                        spec -> spec.recipe(new UpgradeAssistant("foo-bar")),
-                        text(
-                                """
-                                        <Project Sdk="Microsoft.NET.Sdk">
-                                          <PropertyGroup>
-                                            <TargetFrameworks>net6.0</TargetFrameworks>
-                                          </PropertyGroup>
-                                        </Project>
-                                        """,
-                                spec -> spec.path("src/Proj.csproj")
-                        )
-                ))
-                .cause()
-                .isInstanceOf(RecipeException.class)
-                .hasMessageContaining("Unknown target framework");
+          rewriteRun(
+            spec -> spec.recipe(new UpgradeAssistant("foo-bar")),
+            text(
+              """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFrameworks>net6.0</TargetFrameworks>
+                  </PropertyGroup>
+                </Project>
+                """,
+              spec -> spec.path("src/Proj.csproj")
+            )
+          ))
+          .cause()
+          .isInstanceOf(RecipeException.class)
+          .hasMessageContaining("Unknown target framework");
+    }
+
+    @Test
+    void upgradeDotNetWithNoProjectFiles() {
+        assertThatThrownBy(() ->
+          rewriteRun(
+            spec -> spec.recipe(new UpgradeAssistant("net9.0"))
+          ))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("No project files found in repository");
     }
 }

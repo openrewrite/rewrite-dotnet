@@ -64,9 +64,12 @@ public class UpgradeAssistant extends UpgradeAssistantRecipe {
 
     @Override
     public void runUpgradeAssistant(Accumulator acc, ExecutionContext ctx) {
-        for (Path projectFile : acc.getProjectFiles()) {
+        List<Path> projectFiles = acc.getProjectFiles();
+        if (projectFiles.isEmpty()) {
+            throw new IllegalStateException("No project files found in repository");
+        }
+        for (Path projectFile : projectFiles) {
             execUpgradeAssistant(projectFile, acc, ctx);
-
         }
     }
 
