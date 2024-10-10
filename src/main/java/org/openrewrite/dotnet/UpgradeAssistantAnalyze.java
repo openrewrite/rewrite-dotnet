@@ -66,7 +66,7 @@ public class UpgradeAssistantAnalyze extends UpgradeAssistantRecipe {
     @Override
     public String getDescription() {
         return "Run [upgrade-assistant analyze](https://learn.microsoft.com/en-us/dotnet/core/porting/upgrade-assistant-overview) " +
-                "across a repository to analyze changes required to upgrade projects to a newer version of .NET." +
+                "across a repository to analyze changes required to upgrade projects to a newer version of .NET. " +
                 "This recipe will generate an `org.openrewrite.dotnet.UpgradeAssistantAnalysis` data table containing " +
                 "the report details.";
     }
